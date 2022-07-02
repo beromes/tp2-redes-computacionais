@@ -51,16 +51,23 @@ int createSocketConnection(char *servIP, in_port_t servPort) {
     return sock;
 }
 
-// Envia mensagem para o servidor
-void sendMessage(int sock, char message[], size_t messageLen) {
-    
-    ssize_t numBytes = send(sock, message, messageLen, 0);
+int getEquipmentId(int sock) {
 
-    if (numBytes < 0) {
-        dieWithSystemMessage("send() failed");    
-    } else if (numBytes != messageLen) {
-        dieWithUserMessage("send()", "sent unexpected number of bytes");
-    }
+    // Monta mensagem
+    Message reqMsg;
+    reqMsg.id = REQ_ADD;
+    reqMsg.destinationId = 0;
+    reqMsg.originId = 0;
+    strcpy(reqMsg.payload, "");
+
+    // Envia mensagem para o servidor
+    sendMessage(sock, reqMsg);
+
+    // Aguarda resposta
+    Message resMsg;
+    receiveMessage(sock, &resMsg);
+
+    return atoi(resMsg.payload);
 }
 
 int main(int argc, char *argv[]) {
@@ -72,35 +79,38 @@ int main(int argc, char *argv[]) {
     char *servIP = argv[1]; // Primeiro parametro: endereco IP do servidor
     in_port_t servPort = atoi(argv[2]); // Segundo parametro: porta do servidor
         
-    // Create a reliable, stream socket using TCP
+    // Cria socket usando o TCP
     int sock = createSocketConnection(servIP, servPort);
 
+    // Envia requisição REQ_ADD para obter o seu ID
+    getEquipmentId(sock);
+
     // Loop Principal
-    while(1) {
+    // while(1) {
 
-        // Lê mensagem do teclado
-        char *message = NULL;
-        char newChar;
-        size_t messageLen = 0;
-        getline(&message, &messageLen, stdin);
+    //     // Lê mensagem do teclado
+    //     char *message = NULL;
+    //     char newChar;
+    //     size_t messageLen = 0;
+    //     getline(&message, &messageLen, stdin);
 
-        // Envia mensagem para o servidor
-        sendMessage(sock, message, messageLen);
+    //     // Envia mensagem para o servidor
+    //     sendMessage(sock, message, messageLen);
 
-        // Recebe mensagem do servidor
-        char messageRcvd[BUFFER_SIZE]; // I/O buffer
+    //     // Recebe mensagem do servidor
+    //     char messageRcvd[BUFFER_SIZE]; // I/O buffer
         
-        ssize_t numBytesRcvd = recv(sock, messageRcvd, BUFFER_SIZE, 0);
+    //     ssize_t numBytesRcvd = recv(sock, messageRcvd, BUFFER_SIZE, 0);
 
-        if (numBytesRcvd < 0) {
-            dieWithSystemMessage("recv() failed");
-        } else if (numBytesRcvd == 0) {
-            dieWithUserMessage("recv()", "connection closed prematurely");
-        }
+    //     if (numBytesRcvd < 0) {
+    //         dieWithSystemMessage("recv() failed");
+    //     } else if (numBytesRcvd == 0) {
+    //         dieWithUserMessage("recv()", "connection closed prematurely");
+    //     }
 
-        printf("%s", messageRcvd);
-        free(message);
-    }
+    //     printf("%s", messageRcvd);
+    //     free(message);
+    // }
 
     close(sock);
     exit(0);
