@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include "common.h"
 
 #define COMMAND_KILL    0
@@ -341,7 +342,7 @@ char* execCommand(int clntSocket, char message[]) {
 // Fim dos métodos de protocolo 
 // =========================================================================================
 
-// Lida com um cliente especifoco
+// Lida com um cliente específico
 void handleTCPClient(int clntSocket) {
     char messageRcvd[BUFFER_SIZE]; // Buffer para mensagem recebida
 
@@ -433,6 +434,37 @@ int connectToClient(int servSock) {
     return clntSock;
 }
 
+
+// =========================================================================================
+// Métodos para lidar com threads
+//
+
+// Thread Args
+struct ThreadArgs {
+    int clntSock;
+};
+
+
+// Programa principal de cada Thread
+void *ThreadMain(void *args) {
+    // Garante que os recursos da thread sejam desalocados no final
+    pthread_detach(pthread_self());
+
+    // Recupera o identificador socket dos parâmetros
+    int clntSocket = ((struct ThreadArgs *) args)->clntSock;
+    
+    free(args);
+
+    handleTCPClient(clntSocket);
+
+    return NULL;
+}
+
+//
+// Fim dos métodos de thread 
+// =========================================================================================
+
+
 int main(int argc, char *argv[]) {
 
     // Valida a quantidade de parametros do programa
@@ -459,8 +491,23 @@ int main(int argc, char *argv[]) {
 
         // Aceita conexao com um cliente
         int clntSock = connectToClient(servSock);
-        
-        // Lida com um cliente especifoco
-        handleTCPClient(clntSock);
+
+        // Cria espaço de memória para os argumentos do cliente
+        struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(sizeof(struct ThreadArgs));
+
+        if (threadArgs == NULL) {
+            dieWithSystemMessage("malloc() failed");
+        }
+
+        threadArgs->clntSock = clntSock;
+
+        // Cria thread para o cliente
+        pthread_t threadId;
+        int pthreadResult = pthread_create(&threadId, NULL, ThreadMain, threadArgs);
+
+        if (pthreadResult != 0) {
+            dieWithUserMessage("pthread_create() failed", strerror(pthreadResult));
+            printf("with thread %lu\n", (unsigned long) threadId);
+        }
     }
 }
