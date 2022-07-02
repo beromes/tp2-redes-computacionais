@@ -7,13 +7,13 @@ CC=gcc # compilador, troque para gcc se preferir utilizar C
 #$(EXEC): main.cpp arvore_binaria.o tipo_no.o tipo_item.o
 #	$(CC) $(CFLAGS) main.cpp arvore_binaria.o tipo_no.o tipo_item.o -o $(EXEC)
 
-all: client server
+all: equipment server
 
-client: client.c
-	$(CC) -o client client.c common.c
+equipment: equipment.c
+	$(CC) -o equipment equipment.c common.c
 
 server: server.c
 	$(CC) -o server server.c common.c
 
 clean: # remove todos os arquivos temporarios que forem gerados pela compilacao
-	rm -rf client server
+	rm -rf equipment server
