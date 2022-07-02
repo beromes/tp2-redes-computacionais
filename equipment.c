@@ -9,12 +9,7 @@
 #include <string.h>
 #include "common.h"
 
-// Recupera a familia de endereco de acordo com o formato do IP
-sa_family_t getAddrFamily(char *ip) {
-    return strchr(ip, ':') != NULL ? AF_INET6 : AF_INET;
-}
-
-// Cria um IPv4 para o cliente
+// Cria um IPv4 para o equipamento
 struct sockaddr_in makeIPv4Address(char *ip, in_port_t port) {
     struct sockaddr_in servAddr;
     memset(&servAddr, 0, sizeof(servAddr));
@@ -34,44 +29,20 @@ struct sockaddr_in makeIPv4Address(char *ip, in_port_t port) {
     return servAddr;
 }
 
-// Cria um IPv6 para o cliente
-struct sockaddr_in6 makeIPv6Address(char *ip, in_port_t port) {
-    struct sockaddr_in6 servAddr;
-    memset(&servAddr, 0, sizeof(servAddr));
-    servAddr.sin6_family = AF_INET6;
+int createSocketConnection(char *servIP, in_port_t servPort) {
 
-    // Converte endereco
-    int rtnVal = inet_pton(servAddr.sin6_family, ip, &servAddr.sin6_addr);
-    if (rtnVal == 0) {
-        dieWithUserMessage("inet_pton() failed", "invalid address string");
-    } else if (rtnVal < 0) {
-        dieWithSystemMessage("inet_pton() failed");
-    }
-    
-    // Coloca porta do servidor
-    servAddr.sin6_port = htons(port);
-
-    return servAddr;
-}
-
-int createSocketConnection(sa_family_t addrFamily, char *servIP, in_port_t servPort) {
-
-    // Create a reliable, stream socket using TCP
-    int sock = socket(addrFamily, SOCK_STREAM, IPPROTO_TCP);
+    // Cria socket utilizando TCP
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     
     if (sock < 0) {
         dieWithSystemMessage("socket() failed");
     }
 
-    // Faz a conexao de acordo com o protocolo
-    int connectStatus = -1;
-    if (addrFamily == AF_INET) {
-        struct sockaddr_in servAddr = makeIPv4Address(servIP, servPort);
-        connectStatus = connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0;
-    } else if (addrFamily == AF_INET6) {
-        struct sockaddr_in6 servAddr = makeIPv6Address(servIP, servPort);
-        connectStatus = connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0;
-    }
+    // Cria endereço para o equipamento
+    struct sockaddr_in servAddr = makeIPv4Address(servIP, servPort);
+
+    // Tenta conectar-se ao servidor
+    int connectStatus = connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0;
 
     if (connectStatus < 0) {
         dieWithSystemMessage("connect() failed");
@@ -100,10 +71,9 @@ int main(int argc, char *argv[]) {
         
     char *servIP = argv[1]; // Primeiro parametro: endereco IP do servidor
     in_port_t servPort = atoi(argv[2]); // Segundo parametro: porta do servidor
-    sa_family_t addrFamily = getAddrFamily(servIP); // Recupera qual versao esta sendo utilizada
         
     // Create a reliable, stream socket using TCP
-    int sock = createSocketConnection(addrFamily, servIP, servPort);
+    int sock = createSocketConnection(servIP, servPort);
 
     // Loop Principal
     while(1) {

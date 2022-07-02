@@ -382,24 +382,6 @@ void handleTCPClient(int clntSocket) {
     close(clntSocket); // Encerra a conexao com um cliente
 }
 
-
-
-// Recupera a familia do enderco de acordo com a versao do protoclo IP 
-// (v4 = AF_INET, v6 = AF_INET6)
-sa_family_t getIPVersion(char *ipVersion) {
-
-    if (strcmp(ipVersion, "v4") == 0) {
-        return AF_INET;
-    }
-
-    if (strcmp(ipVersion, "v6") == 0) {
-        return AF_INET6;
-    }
-
-    dieWithUserMessage("IP Versions", "Allowed IP versions are 'v4' and 'v6'");
-    return 0;
-}
-
 // Cria um endereco IPv4 para o servidor
 struct sockaddr_in makeIPv4Address(in_port_t port) {
     struct sockaddr_in servAddr;                    // Local address
@@ -410,44 +392,27 @@ struct sockaddr_in makeIPv4Address(in_port_t port) {
     return servAddr;
 }
 
-// Cria um endereco IPv6 para o servidor
-struct sockaddr_in6 makeIPv6Address(in_port_t port) {
-    struct sockaddr_in6 servAddr;
-    memset(&servAddr, 0, sizeof(servAddr));
-    servAddr.sin6_family = AF_INET6;
-    servAddr.sin6_addr = in6addr_any;
-    servAddr.sin6_port = htons(port);
-    return servAddr;
-}
-
 // Cria socket 
-int createSocket(sa_family_t addrFamily) {
+int createSocket() {
     int servSock;
-    if ((servSock = socket(addrFamily, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if ((servSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         dieWithSystemMessage("socket() failed");
     }
     return servSock;
 }
 
-// Vincula o endereco de acordo com a familia do protoclo (v4 ou v6)
-void bindAddr(sa_family_t addrFamily, in_port_t servPort, int servSock) {
-    int bindStatus = -1;
-
-    if (addrFamily == AF_INET) {
-        struct sockaddr_in ipv4 = makeIPv4Address(servPort);
-        bindStatus = bind(servSock, (struct sockaddr *) &ipv4, sizeof(ipv4));
-    } else if (addrFamily == AF_INET6) {
-        struct sockaddr_in6 ipv6 = makeIPv6Address(servPort);
-        bindStatus = bind(servSock, (struct sockaddr *) &ipv6, sizeof(ipv6));
-    }
-
+// Faz o bind utilizando protocolo IPv4
+void bindAddr(in_port_t servPort, int servSock) {
+    struct sockaddr_in ipv4 = makeIPv4Address(servPort);
+    int bindStatus = bind(servSock, (struct sockaddr *) &ipv4, sizeof(ipv4));
+    
     if (bindStatus < 0) {
         dieWithSystemMessage("bind() failed");
     }
 }
 
-// Faz conexao com clientes IPv4
-int connectToIPv4Client(int servSock) {
+// Aceita conexao com clientes
+int connectToClient(int servSock) {
     struct sockaddr_in clntAddr; // Endereco do cliente        
     socklen_t clntAddrLen = sizeof(clntAddr); // Tamanho do endereco do cliente
     
@@ -468,44 +433,21 @@ int connectToIPv4Client(int servSock) {
     return clntSock;
 }
 
-// Faz conexao com clientes IPv6
-int connectToIPv6Client(int servSock) {
-    struct sockaddr_in6 clntAddr; // Endereco do cliente        
-    socklen_t clntAddrLen = sizeof(clntAddr); // Tamanho do endereco do cliente
-    
-    // Espera por um cliente para conectar
-    int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
-    if (clntSock < 0) {
-        dieWithSystemMessage("accept() failed");
-    }
-    
-    char clntName[INET_ADDRSTRLEN]; // String para armazenar o endereco do cliente
-    
-    if (inet_ntop(AF_INET6, &clntAddr.sin6_addr.s6_addr, clntName, sizeof(clntName)) != NULL) {
-        printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin6_port));
-    } else {
-        puts("Unable to get client address");
-    }
-
-    return clntSock;
-}
-
 int main(int argc, char *argv[]) {
 
     // Valida a quantidade de parametros do programa
-    if (argc != 3) {
-        dieWithUserMessage("Parameter(s)", "<IP Version> <Server Port>");
+    if (argc != 2) {
+        dieWithUserMessage("Parameter(s)", "<Server Port>");
     }
 
-    // Converte parametros para os tipos certos
-    sa_family_t addrFamily = getIPVersion(argv[1]); // Primeiro parametro: Versao do protocolo IP
-    in_port_t servPort = atoi(argv[2]); // Segundo parametro: Porta
+    // Converte parâmetro <Server Port> para valor inteiro
+    in_port_t servPort = atoi(argv[1]);
 
     // Cria socket
-    int servSock = createSocket(addrFamily);
+    int servSock = createSocket();
 
     // Vincula o endereco de acordo com a familia do protoclo (v4 ou v6)
-    bindAddr(addrFamily, servPort, servSock);
+    bindAddr(servPort, servSock);
 
     // Mark the socket so it will listen for incoming connections
     if (listen(servSock, MAXPENDING) < 0) {
@@ -516,13 +458,8 @@ int main(int argc, char *argv[]) {
     while(1) { 
 
         // Aceita conexao com um cliente
-        int clntSock = -1;
-        if (addrFamily == AF_INET) {
-            clntSock = connectToIPv4Client(servSock);
-        } else if (addrFamily == AF_INET6) {
-            clntSock = connectToIPv6Client(servSock);
-        }
-
+        int clntSock = connectToClient(servSock);
+        
         // Lida com um cliente especifoco
         handleTCPClient(clntSock);
     }
