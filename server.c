@@ -17,7 +17,8 @@
 #define COMMAND_READ    4
 #define INVALID_COMMAND -1
 
-static const int MAXPENDING = 5; // Quantidade maxima de solicitacoes de conexao pendentes
+const int MAX_CONNECTIONS = 15; // Quantidade maxima de conexões simultâneas
+int numConnections = 0; 
 
 // =========================================================================================
 //  Métodos do protocolo
@@ -482,15 +483,22 @@ int main(int argc, char *argv[]) {
     bindAddr(servPort, servSock);
 
     // Mark the socket so it will listen for incoming connections
-    if (listen(servSock, MAXPENDING) < 0) {
+    if (listen(servSock, MAX_CONNECTIONS) < 0) {
         dieWithSystemMessage("listen() failed");
     }
 
     // Loop principal
     while(1) { 
 
+        if (numConnections >= MAX_CONNECTIONS) {
+            continue;
+        }
+
         // Aceita conexao com um cliente
         int clntSock = connectToClient(servSock);
+
+        // Incrementa o número de conexões
+        numConnections++;
 
         // Cria espaço de memória para os argumentos do cliente
         struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(sizeof(struct ThreadArgs));
