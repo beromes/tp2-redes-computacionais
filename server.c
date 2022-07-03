@@ -10,333 +10,37 @@
 #include <pthread.h>
 #include "common.h"
 
-#define COMMAND_KILL    0
-#define COMMAND_ADD     1
-#define COMMAND_REMOVE  2
-#define COMMAND_LIST    3
-#define COMMAND_READ    4
-#define INVALID_COMMAND -1
-
-const int MAX_CONNECTIONS = 15; // Quantidade maxima de conexões simultâneas
-int numConnections = 0; 
-
 // =========================================================================================
 //  Métodos do protocolo
 //
 
-int sensorCount = 0; // Quantidade de sensores conectados
+const int MAX_CONNECTIONS = 15; // Quantidade maxima de conexões simultâneas
+int numConnections = 0; 
+int equipments[15][2];
 
-int equipmentSensors[4][4] = {0}; // Relacao entre sensores e equipamentos
+void addEquipment(int clntSock, Message msg) {
 
+    Message resMsg;
 
-int getSensorsCount(char *sensorIds) {
+    if (numConnections > MAX_CONNECTIONS) {
+        
+        // Decrementa número de conexões
+        numConnections--;
 
-    int count = 0;
-    char *token = (char *) malloc(strlen(sensorIds) * sizeof(char));
+        // Monta mensagem de erro
+        resMsg.id = MSG_ERR;
+        sprintf(resMsg.payload, "%d", ERR_EQUIP_LIMIT_EXCEEDED);
+        
+        // Retorna erro para o cliente
+        sendMessage(clntSock, resMsg);
 
-    strncpy(token, sensorIds, strlen(sensorIds));
-
-    token = strtok(token, " ");  
-    while(token != NULL) {
-        count++;
-        token = strtok(NULL, " ");
+        return;
     }
 
-    free(token);
-    return count;
-}
 
-int* getSensorsIndexes(char *sensorIds, int size) {
-    int* sensors = (int *) malloc(size * sizeof(int));
-    int count = 0;
-    char *token = (char *) malloc(strlen(sensorIds) * sizeof(char *));
-
-    strncpy(token, sensorIds, strlen(sensorIds));
-
-    token = strtok(token, " ");   
-    while(token != NULL) {
-        sensors[count] = atoi(token);
-        count++;
-        token = strtok(NULL, " ");
-    }
-
-    free(token);
-    return sensors;
-}
-
-char* addSensor(char* sensorsIds, char* equipmentId) {
-
-    char* message = (char *) malloc(BUFFER_SIZE * sizeof(char)); // Mensagem de retorno
-
-    int newSensorsCount = getSensorsCount(sensorsIds);
-
-    // Valida limite de sensores
-    if (sensorCount + newSensorsCount > 15) {
-        sprintf(message, "limit exceeded\n");
-        return message;
-    }
-
-    int* newSensors = getSensorsIndexes(sensorsIds, newSensorsCount);
-
-    int equipmentIndex = atoi(equipmentId);
-
-    // Verifica se o sensor ja foi adicionado ao equipamento
-    for (int i=0; i < newSensorsCount; i++) {
-        int sensorIndex = newSensors[i];
-        if (equipmentSensors[equipmentIndex][sensorIndex] != 0) {
-            sprintf(message, "sensor 0%d already exists in %s\n", sensorIndex, equipmentId);
-            return message;
-        }
-    }
-
-    // Adiciona sensor ao equipamento
-    for (int i=0; i < newSensorsCount; i++) {
-        int sensorIndex = newSensors[i];
-        equipmentSensors[equipmentIndex][sensorIndex] = 1;
-        sensorCount++;
-    }
-
-    sprintf(message, "sensor %s added\n", sensorsIds);
-    return message;
-}
-
-char* removeSensor(char* sensorId, char* equipmentId) {
-    
-    char *message = (char *) malloc(BUFFER_SIZE * sizeof(char)); // Mensagem de retorno
-
-    int sensorIndex = atoi(sensorId);
-    int equipmentIndex = atoi(equipmentId);
-
-    // Verifica se sensor existe
-    if (equipmentSensors[equipmentIndex][sensorIndex] == 0) {
-        sprintf(message, "sensor %s does not exist in %s\n", sensorId, equipmentId);
-        return message;
-    }
-
-    // Remove sensor do equipamento
-    equipmentSensors[equipmentIndex][sensorIndex] = 0;
-    sensorCount--;
-
-    sprintf(message, "sensor %s removed\n", sensorId);
-    return message;
-}
-
-char* listSensors(char* equipmentId) {    
-
-    char* sensors = (char *) malloc(BUFFER_SIZE * sizeof(char));
-    int equipmentIndex = atoi(equipmentId);
-
-    for (int i = 0; i < 5; i++) {
-        if (equipmentSensors[equipmentIndex][i] != 0) {
-            char s[4];
-            sprintf(s, "0%d ", i);
-            strcat(sensors, s);
-        }
-    }
-
-    if (strlen(sensors) == 0) {
-        sprintf(sensors, "none\n");
-    }
-
-    sensors[strlen(sensors) - 1] = '\n';
-    return sensors;
-}
-
-char* readSensors(char* sensorIds, char* equipmentId) {
-
-    char* message = (char *) malloc(BUFFER_SIZE * sizeof(char));
-
-    int ei = atoi(equipmentId);
-    int sensorCount = getSensorsCount(sensorIds);
-    int* sensors = getSensorsIndexes(sensorIds, sensorCount);
-
-    for (int i = 0; i < sensorCount; i++) {
-        int si = sensors[i];
-        if (equipmentSensors[ei][si] == 0) {
-            if (strlen(message) == 0) {
-                strcat(message, "sensor(s)");
-            }
-            char s[4];
-            sprintf(s, " 0%d", si);
-            strcat(message, s);
-        }
-    }
-
-    if (strlen(message) != 0) {
-        strcat(message, " not installed\n");
-        return message;
-    }
-
-    for (int i = 0; i < sensorCount; i++) {
-        float measure = (float) rand() / (float) (RAND_MAX / 10.0);
-        char s[10];
-        sprintf(s, "%.2f ", measure);
-        strcat(message, s);
-    }
-
-    message[strlen(message) - 1] = '\n';
-    return message;
 
 }
 
-int getCommand(char message[]) {
-
-    if (strstr(message, "kill") != NULL) {
-        return COMMAND_KILL;
-    }
-    if (strstr(message, "add") != NULL) {
-        return COMMAND_ADD;
-    }
-
-    if (strstr(message, "remove") != NULL) {
-        return COMMAND_REMOVE;
-    }
-
-    if (strstr(message, "list") != NULL) {
-        return COMMAND_LIST;
-    }
-
-    if (strstr(message, "read") != NULL) {
-        return COMMAND_READ;
-    }
-
-    return INVALID_COMMAND;
-
-}
-
-char* getEquipmentId(char* message) {
-
-    char *message_in = strstr(message, "in");
-
-    if (message_in == NULL) {
-        return NULL;
-    }
-
-    int size = strlen(message_in) - 4;
-
-    if (size < 0) {
-        return NULL;
-    }
-
-    char* equipmentId = (char *) malloc(size * sizeof(char));
-
-    strncpy(equipmentId, message_in + 3, size);
-
-    int equipmentIdInt = atoi(equipmentId);
-
-    if (equipmentIdInt < 1 || equipmentIdInt > 4) {
-        return NULL;
-    }
-
-    return equipmentId;
-}
-
-
-char* getSensorsIds(char* message, int command) {
-
-    int start, end;
-
-    // Get start
-    if (command == COMMAND_ADD) {
-        start = 11;
-    } else if (command == COMMAND_REMOVE) {
-        start = 14;
-    } else if (command == COMMAND_READ) {
-        start = 5;
-    } else {
-        return NULL;
-    }
-
-    // Get end
-    char *message_in = strstr(message, " in");
-    if (message_in == NULL) {
-        return NULL;
-    }
-    end = message_in - message;
-
-    if (start > end) {
-        return NULL;
-    }
-
-    // Calcula tamanho
-    size_t size = end - start;
-
-    char* sensorsIds = (char *) malloc(size * sizeof(char));
-    strncpy(sensorsIds, message + start, size);
-
-    // Verifica se os indexes dos sensores sao validos
-    int sensorsCount = getSensorsCount(sensorsIds);
-    int* sensorsIndexes = getSensorsIndexes(sensorsIds, sensorsCount);
-
-    if (sensorsCount > 4 || (sensorsCount > 1 && command == COMMAND_REMOVE)) {
-        free(sensorsIds);
-        return NULL;
-    }
-
-    for (int i = 0; i < sensorsCount; i++) {
-        if (sensorsIndexes[i] < 1 || sensorsIndexes[i] > 4) {
-            free(sensorsIds);
-            free(sensorsIndexes);
-            return NULL;
-        }
-    }
-
-    free(sensorsIndexes);
-    return sensorsIds;
-}
-
-char* execCommand(int clntSocket, char message[]) {
-
-    // Identifica o comando
-    int command = getCommand(message);
-    
-    // Se for invalido retorno NULL
-    if (command == INVALID_COMMAND) {
-        return NULL;
-    }
-
-    // Se for Kill, fecha a conecao e encerra o servidor
-    if (command == COMMAND_KILL) {
-        close(clntSocket);
-        exit(1);
-    }
-
-    char* response = (char *) malloc(BUFFER_SIZE * sizeof(char));
-    char* equipmentId = getEquipmentId(message);
-    char* sensorsIds = getSensorsIds(message, command);
-
-    if (sensorsIds == NULL && command != COMMAND_LIST) {
-        strncpy(response, "invalid sensor\n", BUFFER_SIZE);
-        return response;
-    }
-
-    if (equipmentId == NULL) {
-        strncpy(response, "invalid equipment\n", BUFFER_SIZE);
-        return response;
-    }
-
-    switch (command) {
-        case COMMAND_ADD:
-            response = addSensor(sensorsIds, equipmentId);
-            break;
-        case COMMAND_REMOVE:
-            response = removeSensor(sensorsIds, equipmentId);
-            break;
-        case COMMAND_LIST:
-            response = listSensors(equipmentId);
-            break;
-        case COMMAND_READ:
-            response = readSensors(sensorsIds, equipmentId);
-            break;
-        default:
-            break;
-    }
-
-    free(equipmentId);
-    free(sensorsIds);
-
-    return response;
-}
 
 
 //
@@ -345,43 +49,66 @@ char* execCommand(int clntSocket, char message[]) {
 
 // Lida com um cliente específico
 void handleTCPClient(int clntSocket) {
-    char messageRcvd[BUFFER_SIZE]; // Buffer para mensagem recebida
 
-    // Recebe mensagem do cliente
-    ssize_t numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
-    if (numBytesRcvd < 0) {
-        dieWithSystemMessage("recv() failed");
+    numConnections++;
+
+    while(1) {
+
+        Message rcvdMsg;
+
+        // Aguarda mensagem do cliente
+        receiveMessage(clntSocket, &rcvdMsg);
+
+        // Identifica tipo de mensagem e realiza ação
+        switch (rcvdMsg.id) {
+            case REQ_ADD:
+                addEquipment(clntSocket, rcvdMsg);
+                break;
+            default:
+                break;
+        }
     }
 
-    // Send received string and receive again until end of stream
-    while (numBytesRcvd > 0) {
+    // Encerra a conexao com um cliente
+    close(clntSocket);
 
-        printf("%s", messageRcvd);
+    // char* messageRcvd; // Buffer para mensagem recebida
 
-        char* returnMessage = execCommand(clntSocket, messageRcvd);
+    // // Recebe mensagem do cliente
+    // ssize_t numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
+    // if (numBytesRcvd < 0) {
+    //     dieWithSystemMessage("recv() failed");
+    // }
 
-        if (returnMessage == NULL) {
-            break;
-        }
+    // // Send received string and receive again until end of stream
+    // while (numBytesRcvd > 0) {
 
-        size_t returnMessageSize = strlen(returnMessage) + 1;
+    //     printf("%s", messageRcvd);
 
-        ssize_t numBytesSent = send(clntSocket, returnMessage, returnMessageSize, 0);
+    //     char* returnMessage = messageRcvd; //execCommand(clntSocket, messageRcvd);
 
-        if (numBytesSent < 0) {
-            dieWithSystemMessage("send() failed");
-        }
+    //     if (returnMessage == NULL) {
+    //         break;
+    //     }
 
-        // See if there is more data to receive
-        numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
-        if (numBytesRcvd < 0) {
-            dieWithSystemMessage("recv() failed");
-        }
+    //     size_t returnMessageSize = strlen(returnMessage);
 
-        free(returnMessage);
-    }
+    //     ssize_t numBytesSent = send(clntSocket, returnMessage, BUFFER_SIZE, 0);
 
-    close(clntSocket); // Encerra a conexao com um cliente
+    //     if (numBytesSent < 0) {
+    //         dieWithSystemMessage("send() failed");
+    //     }
+
+    //     // See if there is more data to receive
+    //     numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
+    //     if (numBytesRcvd < 0) {
+    //         dieWithSystemMessage("recv() failed");
+    //     }
+
+    //     // free(returnMessage);
+    // }
+
+    // close(clntSocket); // Encerra a conexao com um cliente
 }
 
 // Cria um endereco IPv4 para o servidor
@@ -490,15 +217,8 @@ int main(int argc, char *argv[]) {
     // Loop principal
     while(1) { 
 
-        if (numConnections >= MAX_CONNECTIONS) {
-            continue;
-        }
-
         // Aceita conexao com um cliente
         int clntSock = connectToClient(servSock);
-
-        // Incrementa o número de conexões
-        numConnections++;
 
         // Cria espaço de memória para os argumentos do cliente
         struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(sizeof(struct ThreadArgs));

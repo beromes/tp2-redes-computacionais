@@ -51,6 +51,27 @@ int createSocketConnection(char *servIP, in_port_t servPort) {
     return sock;
 }
 
+// Imprime mensagem de erro no terminal
+void printError(int errorCode) {
+    switch (errorCode) {
+        case ERR_EQUIP_NOT_FOUND:
+            printf("Equipment not found\n");
+            break;
+        case ERR_SRC_EQUIP_NOT_FOUND:
+            printf("Source equipment not found\n");
+            break;
+        case ERR_TAR_EQUIP_NOT_FOUND:
+            printf("Target equipment not found\n");
+            break;
+        case ERR_EQUIP_LIMIT_EXCEEDED:
+            printf("Equipment limit exceeded\n");
+            break;
+        default:
+            break;
+    }
+}
+
+// Manda REQ_ADD para o servidor para obter o identificador
 int getEquipmentId(int sock) {
 
     // Monta mensagem
@@ -66,6 +87,13 @@ int getEquipmentId(int sock) {
     // Aguarda resposta
     Message resMsg;
     receiveMessage(sock, &resMsg);
+
+    // Verifica se ocorreu erro
+    if (resMsg.id == MSG_ERR) {
+        int errorCode = atoi(resMsg.payload);
+        printError(errorCode);
+        return -1;
+    }
 
     return atoi(resMsg.payload);
 }
