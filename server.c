@@ -14,18 +14,32 @@
 //  Métodos do protocolo
 //
 
-const int MAX_CONNECTIONS = 15; // Quantidade maxima de conexões simultâneas
-int numConnections = 0; 
-int equipments[15][2];
+// int numConnections = 0;  // Número de conexões ativas
+int equipments[MAX_CONNECTIONS][2]; // Relação entre os identificadores de equipamentos e o descritor socket
+int nextId = 1; // Armazena o próximo ID de equipamento. Não será implementada uma reinicialização desse valor, à princípio
+
+
+int getEquipmentFreePosition() {
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i][0] == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
 
 void addEquipment(int clntSock, Message msg) {
 
     Message resMsg;
 
-    if (numConnections > MAX_CONNECTIONS) {
+    int position = getEquipmentFreePosition();
+
+    if (position == -1) {
         
+        // TODO: Remover se for desnecessário
         // Decrementa número de conexões
-        numConnections--;
+        // numConnections--;
 
         // Monta mensagem de erro
         resMsg.id = MSG_ERR;
@@ -37,8 +51,29 @@ void addEquipment(int clntSock, Message msg) {
         return;
     }
 
+    // Monta mensagem
+    resMsg.id = RES_ADD;
+    sprintf(resMsg.payload, "%d", nextId);
 
+    // Adiciona à base
+    equipments[position][0] = nextId;
+    equipments[position][1] = clntSock;
 
+    // Converte ID para string e imprime mensagem
+    char* formattedId = getFormattedId(nextId);
+    printf("Equipment %s added\n", formattedId);
+    
+    // Incrementa o próximo ID
+    nextId++;
+
+    // Simula um broadcast, enviando para todos os clientes
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i][0] != 0) {
+            sendMessage(equipments[i][1], resMsg);
+        }
+    }
+
+    free(formattedId);
 }
 
 
@@ -50,7 +85,7 @@ void addEquipment(int clntSock, Message msg) {
 // Lida com um cliente específico
 void handleTCPClient(int clntSocket) {
 
-    numConnections++;
+    // numConnections++;
 
     while(1) {
 
@@ -209,9 +244,14 @@ int main(int argc, char *argv[]) {
     // Vincula o endereco de acordo com a familia do protoclo (v4 ou v6)
     bindAddr(servPort, servSock);
 
-    // Mark the socket so it will listen for incoming connections
+    // Escuta conexões
     if (listen(servSock, MAX_CONNECTIONS) < 0) {
         dieWithSystemMessage("listen() failed");
+    }
+
+    // Inicializa os equipamentos
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        memset(equipments[i], 0, 2);
     }
 
     // Loop principal

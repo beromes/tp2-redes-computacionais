@@ -85,7 +85,7 @@ void sendMessage(int sock, Message msg) {
 void receiveMessage(int sock, Message *message) {
 
     char strRcvd[BUFFER_SIZE]; // I/O buffer
-    memset(strRcvd, BUFFER_SIZE, 0);
+    memset(strRcvd, 0, BUFFER_SIZE);
         
     ssize_t numBytesRcvd = recv(sock, strRcvd, BUFFER_SIZE, 0);
 
@@ -103,3 +103,10 @@ void receiveMessage(int sock, Message *message) {
 //
 // Fim dos métodos de comunicação com o servidor
 // =========================================================================================
+
+char* getFormattedId(int equipmentId) {
+    char* formattedId = (char *) malloc(5 * sizeof(char)); // Obs: limite de 99999 Ids
+    strcpy(formattedId, equipmentId < 10 ? "0" : "");
+    sprintf(formattedId, "%s%d", formattedId, equipmentId);
+    return formattedId;
+}

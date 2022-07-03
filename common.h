@@ -11,6 +11,7 @@
 #define BUFFER_SIZE 500
 #define DELIMETER_END_OF_MESSAGE '\n'
 #define DELIMTER_MESSAGE_SECTION '|'
+#define MAX_CONNECTIONS 15 // Quantidade máxima de conexões simultâneas
 
 // IDs das mensagens
 #define REQ_ADD  1
@@ -46,5 +47,8 @@ void strToMessage(char* str, Message* message);
 // Envio/Recebimento de mensagens
 void sendMessage(int sock, Message msg);
 void receiveMessage(int sock, Message* msg);
+
+// Tratativa para adicionar o 0 adicional à esquerda, seguindo a especificação
+char* getFormattedId(int equipmentId);
 
 #endif

@@ -9,6 +9,9 @@
 #include <string.h>
 #include "common.h"
 
+int equipments[MAX_CONNECTIONS];
+int myId = 0;
+
 // Cria um IPv4 para o equipamento
 struct sockaddr_in makeIPv4Address(char *ip, in_port_t port) {
     struct sockaddr_in servAddr;
@@ -72,7 +75,7 @@ void printError(int errorCode) {
 }
 
 // Manda REQ_ADD para o servidor para obter o identificador
-int getEquipmentId(int sock) {
+void getEquipmentId(int sock) {
 
     // Monta mensagem
     Message reqMsg;
@@ -80,6 +83,9 @@ int getEquipmentId(int sock) {
     reqMsg.destinationId = 0;
     reqMsg.originId = 0;
     strcpy(reqMsg.payload, "");
+
+    // Inicializa lista de IDs dos outros equipamentos
+    memset(equipments, 0, MAX_CONNECTIONS);
 
     // Envia mensagem para o servidor
     sendMessage(sock, reqMsg);
@@ -92,10 +98,21 @@ int getEquipmentId(int sock) {
     if (resMsg.id == MSG_ERR) {
         int errorCode = atoi(resMsg.payload);
         printError(errorCode);
-        return -1;
+        return;
     }
 
-    return atoi(resMsg.payload);
+    if (resMsg.id != RES_ADD) {
+        dieWithSystemMessage("Esperava RES_ADD, mas outra mensagem foi recebida");
+    }
+
+    // Salva ID do cliente
+    myId = atoi(resMsg.payload);
+    
+    // Converte ID para string e imprime mensagem
+    char* formattedId = getFormattedId(myId);
+    printf("New ID: %s\n", formattedId);
+    
+    free(formattedId);
 }
 
 int main(int argc, char *argv[]) {
