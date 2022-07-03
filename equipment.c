@@ -235,7 +235,7 @@ void listEquipments() {
 
     for (int i=0; i < MAX_CONNECTIONS; i++) {
         // Verifica se a posição não está vazia
-        if (equipments[i] != 0) {
+        if (equipments[i] != 0 && equipments[i] != myId) {
             char *formattedId = getFormattedId(equipments[i]);
             strcat(list, formattedId);
             strcat(list, " ");
