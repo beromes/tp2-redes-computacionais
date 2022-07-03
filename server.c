@@ -29,6 +29,34 @@ int getEquipmentFreePosition() {
     return -1;
 }
 
+void sendList(int clntSock) {
+    
+    // Cria mensagem
+    Message msg;
+    msg.id = RES_LIST;
+    msg.originId = 0;
+    msg.destinationId = 0;
+    strcpy(msg.payload, "");
+
+
+    char list[5];
+
+    // Monta lista
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        // Verifica se existe um equipamento na posição
+        if (equipments[i][0] != 0) { //&& equipments[i][1] != clntSock) {
+            sprintf(list, "%d,", equipments[i][0]);
+            strcat(msg.payload, list);
+        }
+    }
+
+    // Remove vírgula que ficou na última posição
+    msg.payload[strlen(msg.payload) - 1] = '\0';
+
+    // Envia mensagem
+    sendMessage(clntSock, msg);
+}
+
 void addEquipment(int clntSock, Message msg) {
 
     Message resMsg;
@@ -62,7 +90,7 @@ void addEquipment(int clntSock, Message msg) {
     // Converte ID para string e imprime mensagem
     char* formattedId = getFormattedId(nextId);
     printf("Equipment %s added\n", formattedId);
-    
+
     // Incrementa o próximo ID
     nextId++;
 
@@ -72,6 +100,10 @@ void addEquipment(int clntSock, Message msg) {
             sendMessage(equipments[i][1], resMsg);
         }
     }
+
+    // Envia lista de equipmentos para aquele que foi adicionado
+    // sleep(1);
+    sendList(clntSock);
 
     free(formattedId);
 }
