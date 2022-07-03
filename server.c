@@ -13,8 +13,6 @@
 // =========================================================================================
 //  Métodos do protocolo
 //
-
-// int numConnections = 0;  // Número de conexões ativas
 int equipments[MAX_CONNECTIONS][2]; // Relação entre os identificadores de equipamentos e o descritor socket
 int nextId = 1; // Armazena o próximo ID de equipamento. Não será implementada uma reinicialização desse valor, à princípio
 
@@ -25,7 +23,6 @@ int getEquipmentFreePosition() {
             return i;
         }
     }
-
     return -1;
 }
 
@@ -38,6 +35,7 @@ int getEquipmentIndex(int equipmentId) {
     return -1;
 }
 
+// Envia lista de equipamentos conectados para um cliente que acabou de se conectar
 void sendList(int clntSock) {
     
     // Cria mensagem
@@ -53,7 +51,7 @@ void sendList(int clntSock) {
     // Monta lista
     for (int i=0; i < MAX_CONNECTIONS; i++) {
         // Verifica se existe um equipamento na posição
-        if (equipments[i][0] != 0) { //&& equipments[i][1] != clntSock) {
+        if (equipments[i][0] != 0) {
             sprintf(list, "%d,", equipments[i][0]);
             strcat(msg.payload, list);
         }
@@ -66,18 +64,16 @@ void sendList(int clntSock) {
     sendMessage(clntSock, msg);
 }
 
+// Adiciona um novo equipamento
 void addEquipment(int clntSock, Message msg) {
 
     Message resMsg;
 
+    // Busca posição librvre na memória para inserir equipamento
     int position = getEquipmentFreePosition();
 
+    // Se não tiver espaço disponível, envia mensagem de erro
     if (position == -1) {
-        
-        // TODO: Remover se for desnecessário
-        // Decrementa número de conexões
-        // numConnections--;
-
         // Monta mensagem de erro
         resMsg.id = MSG_ERR;
         resMsg.originId = 0;
@@ -120,6 +116,7 @@ void addEquipment(int clntSock, Message msg) {
     free(formattedId);
 }
 
+// Trata solicitação de remoção de um equipamento
 void removeEquipment(int clntSock, Message msg) {
     int equipmentId = msg.originId;
     Message resMsg;
@@ -300,7 +297,8 @@ int connectToClient(int servSock) {
     char clntName[INET_ADDRSTRLEN]; // String para armazenar o endereco do cliente
     
     if (inet_ntop(AF_INET, &clntAddr.sin_addr.s_addr, clntName, sizeof(clntName)) != NULL) {
-        printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin_port));
+        // Removendo print que pode atrapalhar correção automática
+        // printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin_port));
     } else {
         puts("Unable to get client address");
     }
@@ -320,11 +318,11 @@ void *ThreadMain(void *args) {
 
     // Recupera o identificador socket dos parâmetros
     int clntSocket = ((ThreadArgs *) args)->sock;
-    
-    free(args);
 
+    // Escuta solicitações do cliente
     handleTCPClient(clntSocket);
 
+    free(args);
     return NULL;
 }
 

@@ -10,8 +10,8 @@
 #include <pthread.h>
 #include "common.h"
 
-int equipments[MAX_CONNECTIONS];
-int myId = 0;
+int equipments[MAX_CONNECTIONS]; // Lista de equipamentos armazenada no cliente
+int myId = 0; // Identificador do cliente
 
 // Cria um IPv4 para o equipamento
 struct sockaddr_in makeIPv4Address(char *ip, in_port_t port) {
@@ -156,10 +156,8 @@ void updateEquipmentsList(Message msg) {
 
 // Recebe REQ_REM e remove equipmaneto da lista
 void removeEquipment(Message msg) {
-
     for(int i=0; i < MAX_CONNECTIONS; i++) {
         if (equipments[i] == msg.originId) {
-            
             // Libera espaço na lista
             equipments[i] = 0;
 
@@ -202,7 +200,6 @@ void requestInfo(int sock, int equipmentId) {
 
 // Recebe um REQ_INF e envia o RES_INF com o valor alerório
 void sendInfo(int sock, Message msg) {
-
     // Imprime a mensagem
     printf("requested information\n");
 
@@ -229,8 +226,10 @@ void receiveInfo(Message msg) {
     free(formattedId);
 }
 
+// Imprime na saída a lista de equipamentos armazenada no cliente
 void listEquipments() {
 
+    // Aloca string na memória
     char* list = (char *) malloc(BUFFER_SIZE * sizeof(char));
     strcpy(list, "");
 
@@ -255,8 +254,6 @@ void listEquipments() {
 
 // =========================================================================================
 // Thread responsável por escutar entrada do teclado e enviar solicitações para o servidor
-//
-
 void *InputThread(void *args) {
     // Garante que os recursos da thread sejam desalocados no final
     pthread_detach(pthread_self());
@@ -285,9 +282,6 @@ void *InputThread(void *args) {
     free(args);
     return NULL;
 }
-
-//
-// Fim dos métodos de thread 
 // =========================================================================================
 
 int main(int argc, char *argv[]) {

@@ -109,9 +109,9 @@ int receiveMessage(int sock, Message *message) {
     // Verifica se o byte lido representa uma quebra de linha
     } while (byte[0] != '\n');
 
-    // Imprime a mensagem recebida
+    // Imprime a mensagem recebida - Comentando pois pode atrapalhar correção automática
     strRcvd[totalBytesReceived] = '\0';
-    printf("%s", strRcvd);
+    // printf("%s", strRcvd);
 
     // Converte string para struct mensagem
     strToMessage(strRcvd, message);
