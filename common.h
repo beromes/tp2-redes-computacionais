@@ -19,8 +19,14 @@
 #define RES_LIST 4
 #define REQ_INF  5
 #define RES_INF  6
-#define ERROR    7
-#define OK       8
+#define MSG_ERR  7
+#define MSG_OK   8
+
+// Possíveis erros
+#define ERR_EQUIP_NOT_FOUND      1
+#define ERR_SRC_EQUIP_NOT_FOUND  2
+#define ERR_TAR_EQUIP_NOT_FOUND  3
+#define ERR_EQUIP_LIMIT_EXCEEDED 4
 
 typedef struct Message {
     int id;
