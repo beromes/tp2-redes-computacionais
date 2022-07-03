@@ -29,6 +29,16 @@ int getEquipmentFreePosition() {
     return -1;
 }
 
+int getEquipmentIndex(int equipmentId) {
+    int equipmentIndex = -1;
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i][0] == equipmentId) {
+            equipmentIndex = i;
+            break;
+        }
+    }
+}
+
 void sendList(int clntSock) {
     
     // Cria mensagem
@@ -116,13 +126,7 @@ void removeEquipment(int clntSock, Message msg) {
     Message resMsg;
 
     // Busca equipamento na lista
-    int equipmentIndex = -1;
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (equipments[i][0] == equipmentId) {
-            equipmentIndex = i;
-            break;
-        }
-    }
+    int equipmentIndex = getEquipmentIndex(equipmentId);
 
     // Se não foi encontrado, envia mensagem de erro
     if (equipmentIndex == -1) {
@@ -130,7 +134,7 @@ void removeEquipment(int clntSock, Message msg) {
         // Monta mensagem de erro
         resMsg.id = MSG_ERR;
         resMsg.originId = 0;
-        resMsg.destinationId = 0;
+        resMsg.destinationId = equipmentId;
         sprintf(resMsg.payload, "%d", ERR_EQUIP_NOT_FOUND);
 
         // Envia mensagem para o cliente
@@ -165,6 +169,54 @@ void removeEquipment(int clntSock, Message msg) {
     free(formattedId);
 }
 
+// Envia solicitação de informação para o destino e devolve para a origem
+void infoRequestOrResponse(int clntSocket, Message msg) {
+
+    Message errorMsg;
+    char* formattedId;
+
+    // Verifica equipamento de origem
+    formattedId = getFormattedId(msg.originId);
+    int originIndex = getEquipmentIndex(msg.originId);
+    if (originIndex == -1) {
+        // Imprime erro
+        printf("Equipment %s not found\n", formattedId);
+
+        // Monta mensagem
+        errorMsg.id = MSG_ERR;
+        errorMsg.originId = 0;
+        errorMsg.destinationId = msg.originId;
+        sprintf(errorMsg.payload, "%d", ERR_SRC_EQUIP_NOT_FOUND);
+
+        // Faz o envio
+        sendMessage(clntSocket, errorMsg);
+        return;
+    }
+
+    // Verifica equipamento de destino
+    formattedId = getFormattedId(msg.destinationId);
+    int destinationIndex = getEquipmentIndex(msg.destinationId);
+    if (destinationIndex == -1) {
+        // Imprime erro
+        printf("Equipment %s not found\n", formattedId);
+
+        // Monta mensagem
+        errorMsg.id = MSG_ERR;
+        errorMsg.originId = 0;
+        errorMsg.destinationId = msg.originId;
+        sprintf(errorMsg.payload, "%d", ERR_TAR_EQUIP_NOT_FOUND);
+
+        // Faz o envio
+        sendMessage(clntSocket, errorMsg);
+        return;
+    }
+
+    // Repassa mensagem para o destino
+    int destinationSock = equipments[destinationIndex][1];
+    sendMessage(destinationSock, msg);
+
+    free(formattedId);
+}
 
 
 //
@@ -192,6 +244,10 @@ void handleTCPClient(int clntSocket) {
                 break;
             case REQ_REM:
                 removeEquipment(clntSocket, rcvdMsg);
+                break;
+            case REQ_INF:
+            case RES_INF:
+                infoRequestOrResponse(clntSocket, rcvdMsg);
                 break;
             default:
                 break;

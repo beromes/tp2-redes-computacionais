@@ -172,7 +172,6 @@ void removeEquipment(Message msg) {
 
 // Envia um REQ_REM para o servidor solicitando o fechamento da conexão
 void closeConnection(int sock) {
-    
     // Monta mensagem
     Message msg;
     msg.id = REQ_REM;
@@ -182,7 +181,48 @@ void closeConnection(int sock) {
 
     // Envia mensagem para o servidor
     sendMessage(sock, msg);
+}
 
+// Envia REQ_INF para obter informações de um determinado equipamento
+void requestInfo(int sock, int equipmentId) {
+    // Monta mensagem
+    Message msg;
+    msg.id = REQ_INF;
+    msg.originId = myId;
+    msg.destinationId = equipmentId;
+    strcpy(msg.payload, "");
+
+    // Envia mensagem para o servidor
+    sendMessage(sock, msg);
+}
+
+// Recebe um REQ_INF e envia o RES_INF com o valor alerório
+void sendInfo(int sock, Message msg) {
+
+    // Imprime a mensagem
+    printf("requested information\n");
+
+    // Monta mensagem de retorno
+    Message resMsg;
+    resMsg.id = RES_INF;
+    resMsg.originId = myId;
+    resMsg.destinationId = msg.originId;
+    
+    // Gera valor aletório
+    float measure = (float) rand() / (float) (RAND_MAX / 10.0);
+    sprintf(resMsg.payload, "%.2f ", measure);
+
+    // Responde o servidor
+    sendMessage(sock, resMsg);
+
+}
+
+// Recebe RES_INF e imprime valor recebido
+void receiveInfo(Message msg) {
+    char* formattedId = getFormattedId(msg.originId);
+    printf("Value from %s: %s\n", formattedId, msg.payload);
+
+    free(formattedId);
 }
 
 // =========================================================================================
@@ -208,10 +248,9 @@ void *InputThread(void *args) {
             break;
         } else if (strcmp(line, "list equipment\n") == 0) {
             //listEquipments();
-        } else if (strncmp(line, "request information from ", 25) == 0) {
-            
-            char *equipmentSubstring = strncpy(line, line + 25, lineLen - 1);
-            printf("Teste: %s\n", equipmentSubstring);
+        } else if (strncmp(line, "request information from ", 25) == 0) {            
+            int equipmentId = atoi(strncpy(line, line + 25, lineLen));
+            requestInfo(sock, equipmentId);
         }
     }
 
@@ -255,32 +294,38 @@ int main(int argc, char *argv[]) {
     // Loop Principal
     while(1) {
 
-        // Aguarda resposta
-        Message resMsg;
+        // Aguarda mensagem do servidor
+        Message msg;
         
-        if (!receiveMessage(sock, &resMsg)) {
+        if (!receiveMessage(sock, &msg)) {
             break;
         }
 
         // Verifica se é resposta da remoção
-        if (resMsg.id == MSG_OK) {
+        if (msg.id == MSG_OK) {
             printf("Successful removal\n");
             break;
         }
 
         // Realiza ação de acordo com o tipo da mensagem
-        switch (resMsg.id) {
+        switch (msg.id) {
             case RES_ADD:
-                saveNewEquipment(resMsg);
+                saveNewEquipment(msg);
                 break;
             case RES_LIST:
-                updateEquipmentsList(resMsg);
+                updateEquipmentsList(msg);
                 break;
             case REQ_REM:
-                removeEquipment(resMsg);
+                removeEquipment(msg);
+                break;
+            case REQ_INF: 
+                sendInfo(sock, msg);
+                break;
+            case RES_INF:
+                receiveInfo(msg);
                 break;
             case MSG_ERR:
-                int errorCode = atoi(resMsg.payload);
+                int errorCode = atoi(msg.payload);
                 printError(errorCode);
                 break;
             default: 
