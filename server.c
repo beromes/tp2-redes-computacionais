@@ -30,13 +30,12 @@ int getEquipmentFreePosition() {
 }
 
 int getEquipmentIndex(int equipmentId) {
-    int equipmentIndex = -1;
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         if (equipments[i][0] == equipmentId) {
-            equipmentIndex = i;
-            break;
+            return i;
         }
     }
+    return -1;
 }
 
 void sendList(int clntSock) {
