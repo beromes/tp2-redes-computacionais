@@ -81,6 +81,8 @@ void addEquipment(int clntSock, Message msg) {
 
     // Monta mensagem
     resMsg.id = RES_ADD;
+    resMsg.originId = 0;
+    resMsg.destinationId = 0;
     sprintf(resMsg.payload, "%d", nextId);
 
     // Adiciona à base
@@ -102,7 +104,6 @@ void addEquipment(int clntSock, Message msg) {
     }
 
     // Envia lista de equipmentos para aquele que foi adicionado
-    // sleep(1);
     sendList(clntSock);
 
     free(formattedId);

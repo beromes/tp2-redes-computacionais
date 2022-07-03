@@ -84,20 +84,39 @@ void sendMessage(int sock, Message msg) {
 // Recebe mensagem do servidor/cliente
 void receiveMessage(int sock, Message *message) {
 
-    char strRcvd[BUFFER_SIZE]; // I/O buffer
-    memset(strRcvd, 0, BUFFER_SIZE);
-        
-    ssize_t numBytesRcvd = recv(sock, strRcvd, BUFFER_SIZE, 0);
+    char* strRcvd = (char *) malloc(BUFFER_SIZE * sizeof(char));
 
-    if (numBytesRcvd < 0) {
-        dieWithSystemMessage("recv() failed");
-    } else if (numBytesRcvd == 0) {
-        dieWithUserMessage("recv()", "connection closed prematurely");
-    }
+    int totalBytesReceived = 0;
+    char byte[1];
 
+    do {
+
+        // Lê um byte de cada vez
+        ssize_t numBytesRcvd = recv(sock, byte, 1, 0);
+
+        if (numBytesRcvd < 0) {
+            dieWithSystemMessage("recv() failed");
+        } else if (numBytesRcvd == 0) {
+            dieWithUserMessage("recv()", "connection closed prematurely");
+        }
+
+        byte[1] = '\0';
+
+        // Adiciona byte lido à string da mensagem
+        strRcvd[totalBytesReceived] = byte[0];
+        totalBytesReceived++;
+
+    // Verifica se o byte lido representa uma quebra de linha
+    } while (byte[0] != '\n');
+
+    // Imprime a mensagem recebida
+    strRcvd[totalBytesReceived] = '\0';
     printf("%s", strRcvd);
 
+    // Converte string para struct mensagem
     strToMessage(strRcvd, message);
+
+    free(strRcvd);
 }
 
 //

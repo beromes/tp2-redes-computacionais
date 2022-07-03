@@ -113,8 +113,6 @@ void getEquipmentId(int sock) {
     printf("New ID: %s\n", formattedId);
     
     free(formattedId);
-
-    printf("SAIUU\n");
 }
 
 // Recebe RES_ADD e adiciona o novo equipamento à sua lista
@@ -153,10 +151,6 @@ void updateEquipmentsList(Message msg) {
         ptr = strtok(NULL, ",");
         i++;
     }
-
-    for(int i=0; i < MAX_CONNECTIONS; i++) {
-        printf("%d: %d\n", i, equipments[i]);
-    }
 }
 
 
@@ -181,8 +175,6 @@ int main(int argc, char *argv[]) {
         // Aguarda resposta
         Message resMsg;
         receiveMessage(sock, &resMsg);
-
-        printf("RECEIVED MSG ID: %d\n", resMsg.id);
 
         // Realiza ação de acordo com o tipo da mensagem
         switch (resMsg.id) {
