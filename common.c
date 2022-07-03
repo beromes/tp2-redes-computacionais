@@ -95,6 +95,8 @@ void receiveMessage(int sock, Message *message) {
         dieWithUserMessage("recv()", "connection closed prematurely");
     }
 
+    printf("%s", strRcvd);
+
     strToMessage(strRcvd, message);
 }
 
