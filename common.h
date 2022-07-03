@@ -36,6 +36,11 @@ typedef struct Message {
     char payload[100];
 } Message;
 
+typedef struct ThreadArgs {
+    int sock;
+} ThreadArgs;
+
+
 // Mensagens de erro
 void dieWithUserMessage(const char *msg, const char *detail);
 void dieWithSystemMessage(const char *msg);

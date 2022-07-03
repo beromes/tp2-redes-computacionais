@@ -139,44 +139,6 @@ void handleTCPClient(int clntSocket) {
 
     // Encerra a conexao com um cliente
     close(clntSocket);
-
-    // char* messageRcvd; // Buffer para mensagem recebida
-
-    // // Recebe mensagem do cliente
-    // ssize_t numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
-    // if (numBytesRcvd < 0) {
-    //     dieWithSystemMessage("recv() failed");
-    // }
-
-    // // Send received string and receive again until end of stream
-    // while (numBytesRcvd > 0) {
-
-    //     printf("%s", messageRcvd);
-
-    //     char* returnMessage = messageRcvd; //execCommand(clntSocket, messageRcvd);
-
-    //     if (returnMessage == NULL) {
-    //         break;
-    //     }
-
-    //     size_t returnMessageSize = strlen(returnMessage);
-
-    //     ssize_t numBytesSent = send(clntSocket, returnMessage, BUFFER_SIZE, 0);
-
-    //     if (numBytesSent < 0) {
-    //         dieWithSystemMessage("send() failed");
-    //     }
-
-    //     // See if there is more data to receive
-    //     numBytesRcvd = recv(clntSocket, messageRcvd, BUFFER_SIZE, 0);
-    //     if (numBytesRcvd < 0) {
-    //         dieWithSystemMessage("recv() failed");
-    //     }
-
-    //     // free(returnMessage);
-    // }
-
-    // close(clntSocket); // Encerra a conexao com um cliente
 }
 
 // Cria um endereco IPv4 para o servidor
@@ -235,19 +197,13 @@ int connectToClient(int servSock) {
 // Métodos para lidar com threads
 //
 
-// Thread Args
-struct ThreadArgs {
-    int clntSock;
-};
-
-
 // Programa principal de cada Thread
 void *ThreadMain(void *args) {
     // Garante que os recursos da thread sejam desalocados no final
     pthread_detach(pthread_self());
 
     // Recupera o identificador socket dos parâmetros
-    int clntSocket = ((struct ThreadArgs *) args)->clntSock;
+    int clntSocket = ((ThreadArgs *) args)->sock;
     
     free(args);
 
@@ -294,13 +250,13 @@ int main(int argc, char *argv[]) {
         int clntSock = connectToClient(servSock);
 
         // Cria espaço de memória para os argumentos do cliente
-        struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(sizeof(struct ThreadArgs));
+        ThreadArgs *threadArgs = (ThreadArgs *) malloc(sizeof(ThreadArgs));
 
         if (threadArgs == NULL) {
             dieWithSystemMessage("malloc() failed");
         }
 
-        threadArgs->clntSock = clntSock;
+        threadArgs->sock = clntSock;
 
         // Cria thread para o cliente
         pthread_t threadId;

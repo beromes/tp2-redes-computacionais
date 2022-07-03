@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <pthread.h>
 #include "common.h"
 
 int equipments[MAX_CONNECTIONS];
@@ -153,6 +154,73 @@ void updateEquipmentsList(Message msg) {
     }
 }
 
+// Envia um REQ_REM para o servidor solicitando o fechamento da conexão
+void closeConnection(int sock) {
+    
+    // Monta mensagem
+    Message msg;
+    msg.id = REQ_REM;
+    msg.originId = myId;
+    msg.destinationId = 0;
+    strcpy(msg.payload, "");
+
+    // Envia mensagem para o servidor
+    sendMessage(sock, msg);
+
+    // Aguarda por mensagem de retorno
+    Message resMsg;
+    receiveMessage(sock, &resMsg);
+
+    // Verifica se ocorreu um erro e imprime mensagem
+    if (msg.id == MSG_ERR) {
+        int errorCode = atoi(msg.payload);
+        printError(errorCode);
+        
+        return;
+    }
+
+    if (msg.id == MSG_OK) {
+        printf("Successful removal\n");
+        close(sock);
+    }
+
+}
+
+// =========================================================================================
+// Thread responsável por escutar entrada do teclado e enviar solicitações para o servidor
+//
+
+void *InputThread(void *args) {
+    // Garante que os recursos da thread sejam desalocados no final
+    pthread_detach(pthread_self());
+
+    // Recupera o identificador socket dos parâmetros
+    int sock = ((ThreadArgs *) args)->sock;
+
+    while (1) {
+        
+        // Lê string do teclado
+        char *line = NULL;
+        size_t lineLen = 0;
+        getline(&line, &lineLen, stdin);
+
+        if (strcmp(line, "close connection\n") == 0) {
+            closeConnection(sock);
+            break;
+        } else if (strcmp(line, "list equipment\n") == 0) {
+            //listEquipments();
+        } else {
+            // TODO: verificar string
+        }
+    }
+
+    free(args);
+    return NULL;
+}
+
+//
+// Fim dos métodos de thread 
+// =========================================================================================
 
 int main(int argc, char *argv[]) {
     
@@ -165,6 +233,20 @@ int main(int argc, char *argv[]) {
         
     // Cria socket usando o TCP
     int sock = createSocketConnection(servIP, servPort);
+
+
+    // Aloca espaço de memória para argumento da thread
+    ThreadArgs *threadArgs = (ThreadArgs *) malloc(sizeof(ThreadArgs));
+
+    if (threadArgs == NULL) {
+        dieWithSystemMessage("malloc() failed");
+    }
+
+    threadArgs->sock = sock;
+
+    // Cria thread para ler entradas do teclado
+    pthread_t threadId;
+    int pthreadResult = pthread_create(&threadId, NULL, InputThread, threadArgs);
 
     // Envia requisição REQ_ADD para obter o seu ID
     getEquipmentId(sock);
