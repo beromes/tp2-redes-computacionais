@@ -9,7 +9,7 @@
 #include <string.h>
 #include "common.h"
 
-int equipments[MAX_CONNECTIONS];
+int equipments[MAX_CONNECTIONS - 1];
 int myId = 0;
 
 // Cria um IPv4 para o equipamento
@@ -115,6 +115,30 @@ void getEquipmentId(int sock) {
     free(formattedId);
 }
 
+// Recebe RES_ADD e adiciona o novo equipamento à sua lista
+void saveNewEquipment(Message msg) {
+
+    // Procura por espaço vazio
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i] == 0) {
+            
+            // Salva ID do novo equipamento
+            equipments[i] = atoi(msg.payload);
+            
+            // Formata ID e imprime mensagem
+            char* formattedId = getFormattedId(equipments[i]);
+            printf("Equipment %s added\n", formattedId);
+
+            free(formattedId);
+            return;
+        }
+    }
+
+
+}
+
+
+
 int main(int argc, char *argv[]) {
     
     if (argc != 3) {
@@ -131,31 +155,22 @@ int main(int argc, char *argv[]) {
     getEquipmentId(sock);
 
     // Loop Principal
-    // while(1) {
+    while(1) {
 
-    //     // Lê mensagem do teclado
-    //     char *message = NULL;
-    //     char newChar;
-    //     size_t messageLen = 0;
-    //     getline(&message, &messageLen, stdin);
+        // Aguarda resposta
+        Message resMsg;
+        receiveMessage(sock, &resMsg);
 
-    //     // Envia mensagem para o servidor
-    //     sendMessage(sock, message, messageLen);
+        // Realiza ação de acordo com o tipo da mensagem
+        switch (resMsg.id) {
+            case RES_ADD:
+                saveNewEquipment(resMsg);
+                break;
+            default: 
+                break;
+        }
 
-    //     // Recebe mensagem do servidor
-    //     char messageRcvd[BUFFER_SIZE]; // I/O buffer
-        
-    //     ssize_t numBytesRcvd = recv(sock, messageRcvd, BUFFER_SIZE, 0);
-
-    //     if (numBytesRcvd < 0) {
-    //         dieWithSystemMessage("recv() failed");
-    //     } else if (numBytesRcvd == 0) {
-    //         dieWithUserMessage("recv()", "connection closed prematurely");
-    //     }
-
-    //     printf("%s", messageRcvd);
-    //     free(message);
-    // }
+    }
 
     close(sock);
     exit(0);
