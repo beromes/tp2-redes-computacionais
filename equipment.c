@@ -183,23 +183,6 @@ void closeConnection(int sock) {
     // Envia mensagem para o servidor
     sendMessage(sock, msg);
 
-    // Aguarda por mensagem de retorno
-    Message resMsg;
-    receiveMessage(sock, &resMsg);
-
-    // Verifica se ocorreu um erro e imprime mensagem
-    if (resMsg.id == MSG_ERR) {
-        int errorCode = atoi(resMsg.payload);
-        printError(errorCode);
-        return;
-    }
-
-    if (resMsg.id == MSG_OK) {
-        printf("Successful removal\n");
-        close(sock);
-        exit(1);
-    }
-
 }
 
 // =========================================================================================
@@ -225,8 +208,10 @@ void *InputThread(void *args) {
             break;
         } else if (strcmp(line, "list equipment\n") == 0) {
             //listEquipments();
-        } else {
-            // TODO: verificar string
+        } else if (strncmp(line, "request information from ", 25) == 0) {
+            
+            char *equipmentSubstring = strncpy(line, line + 25, lineLen - 1);
+            printf("Teste: %s\n", equipmentSubstring);
         }
     }
 
@@ -277,6 +262,12 @@ int main(int argc, char *argv[]) {
             break;
         }
 
+        // Verifica se é resposta da remoção
+        if (resMsg.id == MSG_OK) {
+            printf("Successful removal\n");
+            break;
+        }
+
         // Realiza ação de acordo com o tipo da mensagem
         switch (resMsg.id) {
             case RES_ADD:
@@ -287,6 +278,10 @@ int main(int argc, char *argv[]) {
                 break;
             case REQ_REM:
                 removeEquipment(resMsg);
+                break;
+            case MSG_ERR:
+                int errorCode = atoi(resMsg.payload);
+                printError(errorCode);
                 break;
             default: 
                 break;
