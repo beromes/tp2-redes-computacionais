@@ -71,6 +71,8 @@ void addEquipment(int clntSock, Message msg) {
 
         // Monta mensagem de erro
         resMsg.id = MSG_ERR;
+        resMsg.originId = 0;
+        resMsg.destinationId = 0;
         sprintf(resMsg.payload, "%d", ERR_EQUIP_LIMIT_EXCEEDED);
         
         // Retorna erro para o cliente
@@ -109,6 +111,60 @@ void addEquipment(int clntSock, Message msg) {
     free(formattedId);
 }
 
+void removeEquipment(int clntSock, Message msg) {
+    int equipmentId = msg.originId;
+    Message resMsg;
+
+    // Busca equipamento na lista
+    int equipmentIndex = -1;
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i][0] == equipmentId) {
+            equipmentIndex = i;
+            break;
+        }
+    }
+
+    // Se não foi encontrado, envia mensagem de erro
+    if (equipmentIndex == -1) {
+
+        // Monta mensagem de erro
+        resMsg.id = MSG_ERR;
+        resMsg.originId = 0;
+        resMsg.destinationId = 0;
+        sprintf(resMsg.payload, "%d", ERR_EQUIP_NOT_FOUND);
+
+        // Envia mensagem para o cliente
+        sendMessage(clntSock, resMsg);
+        return;
+    }
+
+    // Remove cliente da base
+    equipments[equipmentIndex][0] = 0;
+    equipments[equipmentIndex][1] = 0;
+
+    // Imprime mensagem
+    char* formattedId = getFormattedId(equipmentId);
+    printf("Equipment %s removed\n", formattedId);
+
+    // Monta mensagem de resposta
+    resMsg.id = MSG_OK;
+    resMsg.originId = 0;
+    resMsg.destinationId = equipmentId;
+    strcpy(resMsg.payload, "");
+
+    // Envia OK para o cliente
+    sendMessage(clntSock, resMsg);
+
+    // Simula um broadcast, repassando mensagem para todos os clientes conectados
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i][0] != 0) {
+            sendMessage(equipments[i][1], msg);
+        }
+    }
+
+    free(formattedId);
+}
+
 
 
 //
@@ -125,12 +181,17 @@ void handleTCPClient(int clntSocket) {
         Message rcvdMsg;
 
         // Aguarda mensagem do cliente
-        receiveMessage(clntSocket, &rcvdMsg);
+        if (!receiveMessage(clntSocket, &rcvdMsg)) {
+            break;
+        }
 
         // Identifica tipo de mensagem e realiza ação
         switch (rcvdMsg.id) {
             case REQ_ADD:
                 addEquipment(clntSocket, rcvdMsg);
+                break;
+            case REQ_REM:
+                removeEquipment(clntSocket, rcvdMsg);
                 break;
             default:
                 break;

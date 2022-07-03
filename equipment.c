@@ -154,6 +154,22 @@ void updateEquipmentsList(Message msg) {
     }
 }
 
+// Recebe REQ_REM e remove equipmaneto da lista
+void removeEquipment(Message msg) {
+
+    for(int i=0; i < MAX_CONNECTIONS; i++) {
+        if (equipments[i] == msg.originId) {
+            // Imprime mensagem
+            char* formattedId = getFormattedId(msg.originId);
+            printf("Equipment %s removed\n", formattedId);
+
+            // Libera ponteiro
+            free(formattedId);
+            return;
+        }
+    }
+}
+
 // Envia um REQ_REM para o servidor solicitando o fechamento da conexão
 void closeConnection(int sock) {
     
@@ -172,16 +188,16 @@ void closeConnection(int sock) {
     receiveMessage(sock, &resMsg);
 
     // Verifica se ocorreu um erro e imprime mensagem
-    if (msg.id == MSG_ERR) {
-        int errorCode = atoi(msg.payload);
+    if (resMsg.id == MSG_ERR) {
+        int errorCode = atoi(resMsg.payload);
         printError(errorCode);
-        
         return;
     }
 
-    if (msg.id == MSG_OK) {
+    if (resMsg.id == MSG_OK) {
         printf("Successful removal\n");
         close(sock);
+        exit(1);
     }
 
 }
@@ -256,7 +272,10 @@ int main(int argc, char *argv[]) {
 
         // Aguarda resposta
         Message resMsg;
-        receiveMessage(sock, &resMsg);
+        
+        if (!receiveMessage(sock, &resMsg)) {
+            break;
+        }
 
         // Realiza ação de acordo com o tipo da mensagem
         switch (resMsg.id) {
@@ -265,6 +284,9 @@ int main(int argc, char *argv[]) {
                 break;
             case RES_LIST:
                 updateEquipmentsList(resMsg);
+                break;
+            case REQ_REM:
+                removeEquipment(resMsg);
                 break;
             default: 
                 break;

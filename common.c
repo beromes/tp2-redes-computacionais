@@ -82,7 +82,7 @@ void sendMessage(int sock, Message msg) {
 
 
 // Recebe mensagem do servidor/cliente
-void receiveMessage(int sock, Message *message) {
+int receiveMessage(int sock, Message *message) {
 
     char* strRcvd = (char *) malloc(BUFFER_SIZE * sizeof(char));
 
@@ -97,7 +97,7 @@ void receiveMessage(int sock, Message *message) {
         if (numBytesRcvd < 0) {
             dieWithSystemMessage("recv() failed");
         } else if (numBytesRcvd == 0) {
-            dieWithUserMessage("recv()", "connection closed prematurely");
+            return 0;
         }
 
         byte[1] = '\0';
@@ -117,6 +117,7 @@ void receiveMessage(int sock, Message *message) {
     strToMessage(strRcvd, message);
 
     free(strRcvd);
+    return 1;
 }
 
 //

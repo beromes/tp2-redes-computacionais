@@ -51,7 +51,7 @@ void strToMessage(char* str, Message* message);
 
 // Envio/Recebimento de mensagens
 void sendMessage(int sock, Message msg);
-void receiveMessage(int sock, Message* msg);
+int receiveMessage(int sock, Message* msg);
 
 // Tratativa para adicionar o 0 adicional à esquerda, seguindo a especificação
 char* getFormattedId(int equipmentId);
