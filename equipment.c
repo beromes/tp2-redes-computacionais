@@ -9,7 +9,7 @@
 #include <string.h>
 #include "common.h"
 
-int equipments[MAX_CONNECTIONS - 1];
+int equipments[MAX_CONNECTIONS];
 int myId = 0;
 
 // Cria um IPv4 para o equipamento
@@ -113,6 +113,8 @@ void getEquipmentId(int sock) {
     printf("New ID: %s\n", formattedId);
     
     free(formattedId);
+
+    printf("SAIUU\n");
 }
 
 // Recebe RES_ADD e adiciona o novo equipamento à sua lista
@@ -133,10 +135,29 @@ void saveNewEquipment(Message msg) {
             return;
         }
     }
-
-
 }
 
+// Recebe RES_LIST e atualiza lita de equipamentos
+void updateEquipmentsList(Message msg) {
+
+    // Reinicia lista de equipamentos
+    memset(equipments, 0, MAX_CONNECTIONS);
+
+    // Inicializa contador
+    int i = 0;
+
+    char* ptr = strtok(msg.payload, ",");
+
+    while(ptr != NULL) {
+        equipments[i] = atoi(ptr);
+        ptr = strtok(NULL, ",");
+        i++;
+    }
+
+    for(int i=0; i < MAX_CONNECTIONS; i++) {
+        printf("%d: %d\n", i, equipments[i]);
+    }
+}
 
 
 int main(int argc, char *argv[]) {
@@ -161,10 +182,15 @@ int main(int argc, char *argv[]) {
         Message resMsg;
         receiveMessage(sock, &resMsg);
 
+        printf("RECEIVED MSG ID: %d\n", resMsg.id);
+
         // Realiza ação de acordo com o tipo da mensagem
         switch (resMsg.id) {
             case RES_ADD:
                 saveNewEquipment(resMsg);
+                break;
+            case RES_LIST:
+                updateEquipmentsList(resMsg);
                 break;
             default: 
                 break;
