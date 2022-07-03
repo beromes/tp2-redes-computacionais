@@ -159,6 +159,10 @@ void removeEquipment(Message msg) {
 
     for(int i=0; i < MAX_CONNECTIONS; i++) {
         if (equipments[i] == msg.originId) {
+            
+            // Libera espaço na lista
+            equipments[i] = 0;
+
             // Imprime mensagem
             char* formattedId = getFormattedId(msg.originId);
             printf("Equipment %s removed\n", formattedId);
@@ -225,6 +229,30 @@ void receiveInfo(Message msg) {
     free(formattedId);
 }
 
+void listEquipments() {
+
+    char* list = (char *) malloc(BUFFER_SIZE * sizeof(char));
+    strcpy(list, "");
+
+    for (int i=0; i < MAX_CONNECTIONS; i++) {
+        // Verifica se a posição não está vazia
+        if (equipments[i] != 0) {
+            char *formattedId = getFormattedId(equipments[i]);
+            strcat(list, formattedId);
+            strcat(list, " ");
+            free(formattedId);
+        }
+    }
+
+    // Substitui espaço no final por quebra de linha
+    list[strlen(list) - 1] = '\n';
+
+    // Imprime lista
+    printf("%s", list);
+
+    free(list);
+}
+
 // =========================================================================================
 // Thread responsável por escutar entrada do teclado e enviar solicitações para o servidor
 //
@@ -247,7 +275,7 @@ void *InputThread(void *args) {
             closeConnection(sock);
             break;
         } else if (strcmp(line, "list equipment\n") == 0) {
-            //listEquipments();
+            listEquipments();
         } else if (strncmp(line, "request information from ", 25) == 0) {            
             int equipmentId = atoi(strncpy(line, line + 25, lineLen));
             requestInfo(sock, equipmentId);
